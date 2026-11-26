@@ -12,3 +12,5 @@ String _two(int n) => n.toString().padLeft(2, '0');
 
 String dateFr(DateTime d) =>
     '${_two(d.day)}/${_two(d.month)}/${d.year} ${_two(d.hour)}:${_two(d.minute)}';
+
+String hourFr(DateTime d) => '${_two(d.hour)}:${_two(d.minute)}';
