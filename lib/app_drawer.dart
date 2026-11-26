@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'providers.dart';
 import 'screens/drinks_screen.dart';
 import 'screens/kits_screen.dart';
+import 'screens/losses_screen.dart';
 import 'screens/users_screen.dart';
 
 class AppDrawer extends ConsumerWidget {
@@ -37,6 +38,11 @@ class AppDrawer extends ConsumerWidget {
                 leading: const Icon(Icons.inventory),
                 title: const Text('Catalogue kits'),
                 onTap: () => _open(context, const KitsScreen()),
+              ),
+              ListTile(
+                leading: const Icon(Icons.report_problem_outlined),
+                title: const Text('Pertes'),
+                onTap: () => _open(context, const LossesScreen()),
               ),
               ListTile(
                 leading: const Icon(Icons.group),
