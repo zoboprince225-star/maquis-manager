@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'providers.dart';
 import 'screens/analysis_screen.dart';
+import 'screens/audit_screen.dart';
 import 'screens/backup_screen.dart';
 import 'screens/customers_screen.dart';
 import 'screens/drinks_screen.dart';
@@ -52,6 +53,11 @@ class AppDrawer extends ConsumerWidget {
                       leading: const Icon(Icons.insights),
                       title: const Text('Bénéfices et bilans'),
                       onTap: () => _open(context, const AnalysisScreen()),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.policy),
+                      title: const Text('Journal d’audit'),
+                      onTap: () => _open(context, const AuditScreen()),
                     ),
                     ListTile(
                       leading: const Icon(Icons.file_download),
