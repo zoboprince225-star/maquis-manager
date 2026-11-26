@@ -1,5 +1,7 @@
-import 'app_drawer.dart';
 import 'package:flutter/material.dart';
+import 'app_drawer.dart';
+import 'screens/drink_form.dart';
+import 'screens/drinks_screen.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -15,7 +17,7 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(_titles[_index])),
-            drawer: const AppDrawer(),
+      drawer: const AppDrawer(),
       body: IndexedStack(
         index: _index,
         children: const [
@@ -51,17 +53,27 @@ class _AppShellState extends State<AppShell> {
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
-  static const _actions = [
-    ('Créer boisson', Icons.local_bar, Color(0xFF6A1B9A)),
-    ('Nouvelle vente', Icons.add, Color(0xFF4CAF50)),
-    ('État des stocks', Icons.inventory_2, Color(0xFF26A69A)),
-    ('Approvision-nement', Icons.local_shipping, Color(0xFF8D6E63)),
-    ('Inventaire', Icons.archive, Color(0xFF78909C)),
-    ('Dépense', Icons.payments, Color(0xFF00ACC1)),
-  ];
+  void _soon(BuildContext context) => ScaffoldMessenger.of(context)
+      .showSnackBar(const SnackBar(content: Text('Bientôt disponible')));
 
   @override
   Widget build(BuildContext context) {
+    final actions = <(String, IconData, Color, VoidCallback)>[
+      ('Créer boisson', Icons.local_bar, const Color(0xFF6A1B9A),
+          () => showDrinkForm(context)),
+      ('Nouvelle vente', Icons.add, const Color(0xFF4CAF50),
+          () => _soon(context)),
+      ('État des stocks', Icons.inventory_2, const Color(0xFF26A69A), () {
+        Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const DrinksScreen()));
+      }),
+      ('Approvision-nement', Icons.local_shipping, const Color(0xFF8D6E63),
+          () => _soon(context)),
+      ('Inventaire', Icons.archive, const Color(0xFF78909C),
+          () => _soon(context)),
+      ('Dépense', Icons.payments, const Color(0xFF00ACC1),
+          () => _soon(context)),
+    ];
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -75,7 +87,7 @@ class HomePage extends StatelessWidget {
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
           children: [
-            for (final a in _actions) _Tile(a.$1, a.$2, a.$3),
+            for (final a in actions) _Tile(a.$1, a.$2, a.$3, a.$4),
           ],
         ),
       ],
@@ -87,7 +99,8 @@ class _Tile extends StatelessWidget {
   final String label;
   final IconData icon;
   final Color color;
-  const _Tile(this.label, this.icon, this.color);
+  final VoidCallback onTap;
+  const _Tile(this.label, this.icon, this.color, this.onTap);
 
   @override
   Widget build(BuildContext context) {
@@ -96,8 +109,7 @@ class _Tile extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () => ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Bientôt disponible'))),
+        onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(8),
           child: Column(
