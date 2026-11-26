@@ -2,11 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app_drawer.dart';
 import 'providers.dart';
+import 'screens/caisse_page.dart';
 import 'screens/drink_form.dart';
+import 'screens/expense_form.dart';
 import 'screens/inventory_screen.dart';
+import 'screens/sale_screen.dart';
+import 'screens/sales_page.dart';
 import 'screens/stock_screen.dart';
 import 'screens/supply_screen.dart';
 import 'services/stock_service.dart';
+import 'widgets/day_card.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -27,8 +32,8 @@ class _AppShellState extends State<AppShell> {
         index: _index,
         children: const [
           HomePage(),
-          _Soon('Caisse'),
-          _Soon('Ventes'),
+          CaissePage(),
+          SalesPage(),
           _Soon('Journal'),
           _Soon('Guide'),
         ],
@@ -62,49 +67,52 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
-  late Future<List<StockRow>> _future;
+  List<StockRow> _rows = [];
 
   int get _eid => ref.read(sessionProvider)!.establishmentId;
 
-  Future<List<StockRow>> _load() =>
-      ref.read(stockServiceProvider).rows(_eid);
+  Future<void> _reload() async {
+    final r = await ref.read(stockServiceProvider).rows(_eid);
+    if (mounted) setState(() => _rows = r);
+  }
 
   @override
   void initState() {
     super.initState();
-    _future = _load();
+    _reload();
   }
 
-  void _reload() => setState(() => _future = _load());
-
   Future<void> _open(Widget page) async {
-    await Navigator.push(
-        context, MaterialPageRoute(builder: (_) => page));
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => page));
     if (mounted) _reload();
   }
 
-  void _soon() => ScaffoldMessenger.of(context)
-      .showSnackBar(const SnackBar(content: Text('Bientôt disponible')));
-
   @override
   Widget build(BuildContext context) {
+    ref.listen<int>(dataTickProvider, (_, __) => _reload());
     final actions = <(String, IconData, Color, VoidCallback)>[
       ('Créer boisson', Icons.local_bar, const Color(0xFF6A1B9A), () async {
         await showDrinkForm(context);
         if (mounted) _reload();
       }),
-      ('Nouvelle vente', Icons.add, const Color(0xFF4CAF50), _soon),
+      ('Nouvelle vente', Icons.add, const Color(0xFF4CAF50),
+          () => _open(const SaleScreen())),
       ('État des stocks', Icons.inventory_2, const Color(0xFF26A69A),
           () => _open(const StockScreen())),
       ('Approvision-nement', Icons.local_shipping, const Color(0xFF8D6E63),
           () => _open(const SupplyScreen())),
       ('Inventaire', Icons.archive, const Color(0xFF78909C),
           () => _open(const InventoryScreen())),
-      ('Dépense', Icons.payments, const Color(0xFF00ACC1), _soon),
+      ('Dépense', Icons.payments, const Color(0xFF00ACC1),
+          () => showExpenseForm(context)),
     ];
+    final alerts = _rows.where((r) => r.empty || r.low).toList()
+      ..sort((a, b) => a.stock.compareTo(b.stock));
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        const DayCard(),
+        const SizedBox(height: 16),
         Text('Actions rapides',
             style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 12),
@@ -119,60 +127,50 @@ class _HomePageState extends ConsumerState<HomePage> {
           ],
         ),
         const SizedBox(height: 20),
-        FutureBuilder<List<StockRow>>(
-          future: _future,
-          builder: (context, snap) {
-            if (!snap.hasData) return const SizedBox.shrink();
-            final alerts = snap.data!.where((r) => r.empty || r.low).toList()
-              ..sort((a, b) => a.stock.compareTo(b.stock));
-            return Card(
-              child: InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: () => _open(const StockScreen()),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(children: [
-                        Icon(
-                            alerts.isEmpty
-                                ? Icons.check_circle
-                                : Icons.warning_amber_rounded,
-                            color: alerts.isEmpty
-                                ? Colors.green
-                                : Colors.orange),
-                        const SizedBox(width: 8),
-                        Text('Alertes de stock',
-                            style: Theme.of(context).textTheme.titleMedium),
-                      ]),
-                      const SizedBox(height: 8),
-                      if (alerts.isEmpty)
-                        const Text('Aucune alerte, le stock est en ordre.'),
-                      for (final r in alerts.take(6))
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 3),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(child: Text(r.drink.name)),
-                              Text('${r.stock} · ${r.label}',
-                                  style: TextStyle(
-                                      color: r.empty
-                                          ? Colors.redAccent
-                                          : Colors.orange)),
-                            ],
-                          ),
-                        ),
-                      if (alerts.length > 6)
-                        Text('+ ${alerts.length - 6} autres',
-                            style: const TextStyle(color: Colors.white70)),
-                    ],
-                  ),
-                ),
+        Card(
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => _open(const StockScreen()),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    Icon(
+                        alerts.isEmpty
+                            ? Icons.check_circle
+                            : Icons.warning_amber_rounded,
+                        color: alerts.isEmpty ? Colors.green : Colors.orange),
+                    const SizedBox(width: 8),
+                    Text('Alertes de stock',
+                        style: Theme.of(context).textTheme.titleMedium),
+                  ]),
+                  const SizedBox(height: 8),
+                  if (alerts.isEmpty)
+                    const Text('Aucune alerte, le stock est en ordre.'),
+                  for (final r in alerts.take(6))
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 3),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(child: Text(r.drink.name)),
+                          Text('${r.stock} · ${r.label}',
+                              style: TextStyle(
+                                  color: r.empty
+                                      ? Colors.redAccent
+                                      : Colors.orange)),
+                        ],
+                      ),
+                    ),
+                  if (alerts.length > 6)
+                    Text('+ ${alerts.length - 6} autres',
+                        style: const TextStyle(color: Colors.white70)),
+                ],
               ),
-            );
-          },
+            ),
+          ),
         ),
       ],
     );
