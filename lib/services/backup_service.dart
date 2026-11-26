@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import '../database/app_database.dart';
 import 'audit_service.dart';
+import 'photo_service.dart';
 
 class BackupService {
   BackupService(this.db);
