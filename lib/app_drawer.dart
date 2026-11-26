@@ -5,6 +5,7 @@ import 'screens/customers_screen.dart';
 import 'screens/drinks_screen.dart';
 import 'screens/kits_screen.dart';
 import 'screens/losses_screen.dart';
+import 'screens/printer_screen.dart';
 import 'screens/users_screen.dart';
 
 class AppDrawer extends ConsumerWidget {
@@ -33,6 +34,11 @@ class AppDrawer extends ConsumerWidget {
               leading: const Icon(Icons.credit_score),
               title: const Text('Crédits clients'),
               onTap: () => _open(context, const CustomersScreen()),
+            ),
+            ListTile(
+              leading: const Icon(Icons.print),
+              title: const Text('Imprimante'),
+              onTap: () => _open(context, const PrinterScreen()),
             ),
             if (owner) ...[
               ListTile(
