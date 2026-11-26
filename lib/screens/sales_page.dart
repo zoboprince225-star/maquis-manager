@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../format.dart';
 import '../providers.dart';
 import '../services/sales_service.dart';
+import 'receipt_actions.dart';
 import 'sale_screen.dart';
 
 class SalesPage extends ConsumerStatefulWidget {
@@ -74,6 +75,11 @@ class _SalesPageState extends ConsumerState<SalesPage> {
             subtitle: Text(
                 '${hourFr(r.sale.createdAt)} · ${r.sale.paymentMode == 'credit' ? 'Crédit' : 'Espèces'}\n${r.items}'),
             isThreeLine: true,
+            trailing: IconButton(
+              tooltip: 'Réimprimer le reçu',
+              icon: const Icon(Icons.print),
+              onPressed: () => printSaleReceipt(context, ref, r.sale.id),
+            ),
           ),
       ],
     );
