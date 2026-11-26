@@ -1,3 +1,4 @@
+import 'app_drawer.dart';
 import 'package:flutter/material.dart';
 
 class AppShell extends StatefulWidget {
@@ -14,6 +15,7 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(_titles[_index])),
+            drawer: const AppDrawer(),
       body: IndexedStack(
         index: _index,
         children: const [
