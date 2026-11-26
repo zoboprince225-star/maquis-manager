@@ -17,6 +17,12 @@ jobs:
           cache: true
       - name: Générer le projet Android
         run: flutter create --platforms=android --org com.maquis --project-name maquis_manager .
+      - name: Autorisations Bluetooth
+        run: |
+          M=android/app/src/main/AndroidManifest.xml
+          for P in BLUETOOTH BLUETOOTH_ADMIN BLUETOOTH_CONNECT BLUETOOTH_SCAN ACCESS_FINE_LOCATION; do
+            sed -i "/<application/i\    <uses-permission android:name=\"android.permission.$P\"/>" $M
+          done
       - run: flutter pub get
       - name: Générer le code de la base
         run: dart run build_runner build --delete-conflicting-outputs
