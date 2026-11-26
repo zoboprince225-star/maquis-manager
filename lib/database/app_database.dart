@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
+import 'audit_triggers.dart';
 
 part 'app_database.g.dart';
 
@@ -116,6 +117,29 @@ class CreditPayments extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
+@DataClassName('AuditEntry')
+class AuditEntries extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get establishmentId => integer().nullable()();
+  IntColumn get userId => integer().nullable()();
+  TextColumn get userName => text().nullable()();
+  TextColumn get action => text()();
+  TextColumn get entity => text()();
+  TextColumn get detail => text()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+/// Une seule ligne (id = 1) : utilisateur connecté et journal actif ou non
+@DataClassName('SessionRow')
+class AppSession extends Table {
+  IntColumn get id => integer()();
+  IntColumn get userId => integer().nullable()();
+  BoolColumn get enabled => boolean().withDefault(const Constant(true))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(tables: [
   Establishments,
   Users,
@@ -129,12 +153,14 @@ class CreditPayments extends Table {
   Expenses,
   Customers,
   CreditPayments,
+  AuditEntries,
+  AppSession,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(driftDatabase(name: 'maquis_manager'));
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -144,6 +170,27 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(customers);
             await m.createTable(creditPayments);
             await m.addColumn(sales, sales.customerId);
+          }
+          if (from < 3) {
+            await m.createTable(auditEntries);
+            await m.createTable(appSession);
+          }
+        },
+        beforeOpen: (details) async {
+          await customStatement(
+              'INSERT OR IGNORE INTO app_session (id, user_id, enabled) VALUES (1, NULL, 1)');
+          await customStatement(
+              'UPDATE app_session SET user_id = NULL, enabled = 1 WHERE id = 1');
+          // Les déclencheurs sont recréés à chaque ouverture
+          final old = await customSelect(
+                  "SELECT name FROM sqlite_master WHERE type = 'trigger' AND name LIKE 'trg_audit_%'")
+              .get();
+          for (final r in old) {
+            await customStatement(
+                'DROP TRIGGER IF EXISTS ${r.read<String>('name')}');
+          }
+          for (final sql in auditTriggers) {
+            await customStatement(sql);
           }
         },
       );
