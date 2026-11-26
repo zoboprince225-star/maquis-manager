@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import '../database/app_database.dart';
 import '../providers.dart';
+import '../services/photo_service.dart';
+import '../widgets/drink_photo.dart';
 
 Future<bool?> showDrinkForm(BuildContext context, {Drink? drink}) {
   return showModalBottomSheet<bool>(
@@ -30,9 +33,50 @@ class _DrinkFormState extends ConsumerState<_DrinkForm> {
       text: '${widget.drink?.alertThreshold ?? 5}');
   final _stock = TextEditingController();
   String? _error;
+  String? _photo;
+  String? _newPhoto; // photo choisie dans ce formulaire, pas encore enregistrée
+  bool _saved = false;
 
   int get _eid => ref.read(sessionProvider)!.establishmentId;
   bool get _editing => widget.drink != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _photo = widget.drink?.photoPath;
+  }
+
+  @override
+  void dispose() {
+    // Formulaire fermé sans enregistrer : on supprime la photo orpheline
+    if (!_saved && _newPhoto != null) PhotoService.delete(_newPhoto);
+    super.dispose();
+  }
+
+  Future<void> _pick(ImageSource source) async {
+    try {
+      final n = await PhotoService.pick(source);
+      if (n == null) return;
+      if (_newPhoto != null) await PhotoService.delete(_newPhoto);
+      if (mounted) {
+        setState(() {
+          _photo = n;
+          _newPhoto = n;
+          _error = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _error = 'Impossible d’ajouter la photo : $e');
+    }
+  }
+
+  Future<void> _removePhoto() async {
+    if (_photo != null && _photo == _newPhoto) {
+      await PhotoService.delete(_photo);
+      _newPhoto = null;
+    }
+    if (mounted) setState(() => _photo = null);
+  }
 
   Future<void> _save() async {
     final cat = _cat.text.trim();
@@ -45,12 +89,16 @@ class _DrinkFormState extends ConsumerState<_DrinkForm> {
           sale: int.tryParse(_sell.text) ?? 0,
           threshold: int.tryParse(_th.text) ?? 5,
           initialStock: int.tryParse(_stock.text) ?? 0,
+          photo: _photo,
         );
     if (err != null) {
       setState(() => _error = err);
-    } else if (mounted) {
-      Navigator.pop(context, true);
+      return;
     }
+    _saved = true;
+    final old = widget.drink?.photoPath;
+    if (old != null && old != _photo) await PhotoService.delete(old);
+    if (mounted) Navigator.pop(context, true);
   }
 
   Future<void> _delete() async {
@@ -75,6 +123,7 @@ class _DrinkFormState extends ConsumerState<_DrinkForm> {
     if (err != null) {
       setState(() => _error = err);
     } else if (mounted) {
+      _saved = true;
       Navigator.pop(context, true);
     }
   }
@@ -98,6 +147,29 @@ class _DrinkFormState extends ConsumerState<_DrinkForm> {
           children: [
             Text(_editing ? 'Modifier la boisson' : 'Créer une boisson',
                 style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 12),
+            Row(children: [
+              DrinkPhoto(name: _photo, size: 80),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Wrap(spacing: 4, children: [
+                  TextButton.icon(
+                      onPressed: () => _pick(ImageSource.gallery),
+                      icon: const Icon(Icons.photo_library),
+                      label: const Text('Galerie')),
+                  TextButton.icon(
+                      onPressed: () => _pick(ImageSource.camera),
+                      icon: const Icon(Icons.photo_camera),
+                      label: const Text('Appareil photo')),
+                  if (_photo != null)
+                    TextButton.icon(
+                        onPressed: _removePhoto,
+                        icon: const Icon(Icons.delete_outline,
+                            color: Colors.redAccent),
+                        label: const Text('Retirer')),
+                ]),
+              ),
+            ]),
             TextField(
                 controller: _name,
                 textCapitalization: TextCapitalization.sentences,
