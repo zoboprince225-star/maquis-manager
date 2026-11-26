@@ -23,6 +23,22 @@ jobs:
           for P in BLUETOOTH BLUETOOTH_ADMIN BLUETOOTH_CONNECT BLUETOOTH_SCAN ACCESS_FINE_LOCATION; do
             sed -i "/<application/i\    <uses-permission android:name=\"android.permission.$P\"/>" $M
           done
+      - name: Forcer Android 36 pour les paquets
+        run: |
+          mkdir -p ~/.gradle/init.d
+          cat > ~/.gradle/init.d/maquis-compilesdk.gradle <<'EOF'
+          allprojects {
+              afterEvaluate { p ->
+                  if (p.plugins.hasPlugin('com.android.library')) {
+                      try {
+                          p.android.compileSdk = 36
+                      } catch (Throwable t) {
+                          p.android.compileSdkVersion 36
+                      }
+                  }
+              }
+          }
+          EOF
       - run: flutter pub get
       - name: Générer le code de la base
         run: dart run build_runner build --delete-conflicting-outputs
