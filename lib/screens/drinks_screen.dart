@@ -83,6 +83,7 @@ class _DrinksScreenState extends ConsumerState<DrinksScreen> {
                     final s = stock[d.id] ?? 0;
                     final st = _status(s, d.alertThreshold);
                     return ListTile(
+                      leading: DrinkPhoto(name: d.photoPath),
                       title: Text(d.name),
                       subtitle: Text(
                           '${d.category == null ? '' : '${d.category} · '}'
