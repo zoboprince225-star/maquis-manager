@@ -42,7 +42,16 @@ class BackupService {
         for (final r in await db.select(db.auditEntries).get()) r.toJson()
       ],
     };
+        final photos = <String, String>{};
+    final photoDir = (await PhotoService.dir()).path;
+    for (final d in await db.select(db.drinks).get()) {
+      final name = d.photoPath;
+      if (name == null || name.isEmpty) continue;
+      final f = File('$photoDir/$name');
+      if (await f.exists()) photos[name] = base64Encode(await f.readAsBytes());
+    }
     final data = {
+      'photos': photos,
       'app': 'maquis-manager',
       'schema': db.schemaVersion,
       'createdAt': DateTime.now().toIso8601String(),
