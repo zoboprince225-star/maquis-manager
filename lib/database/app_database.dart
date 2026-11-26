@@ -74,7 +74,9 @@ class Sales extends Table {
   IntColumn get userId => integer()();
   IntColumn get workDayId => integer().nullable()();
   IntColumn get total => integer()();
+  // cash ou credit
   TextColumn get paymentMode => text().withDefault(const Constant('cash'))();
+  IntColumn get customerId => integer().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
@@ -97,6 +99,23 @@ class Expenses extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
+class Customers extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get establishmentId => integer()();
+  TextColumn get name => text()();
+  TextColumn get phone => text().nullable()();
+}
+
+class CreditPayments extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get establishmentId => integer()();
+  IntColumn get customerId => integer()();
+  IntColumn get workDayId => integer().nullable()();
+  IntColumn get amount => integer()();
+  IntColumn get userId => integer().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
 @DriftDatabase(tables: [
   Establishments,
   Users,
@@ -108,10 +127,24 @@ class Expenses extends Table {
   Sales,
   SaleItems,
   Expenses,
+  Customers,
+  CreditPayments,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(driftDatabase(name: 'maquis_manager'));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.createTable(customers);
+            await m.createTable(creditPayments);
+            await m.addColumn(sales, sales.customerId);
+          }
+        },
+      );
 }
