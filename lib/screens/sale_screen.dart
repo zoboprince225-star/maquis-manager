@@ -1,3 +1,4 @@
+import '../widgets/drink_photo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../format.dart';
@@ -140,6 +141,7 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
                             style: TextStyle(fontWeight: FontWeight.bold))),
                     for (final r in _stock)
                       ListTile(
+                        leading: DrinkPhoto(name: r.drink.photoPath, size: 44),
                         title: Text(r.drink.name),
                         subtitle: Text(
                             '${fcfa(r.drink.salePrice)} · stock ${r.stock}',
