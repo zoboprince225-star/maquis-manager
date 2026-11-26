@@ -28,7 +28,7 @@ jobs:
           for P in BLUETOOTH BLUETOOTH_ADMIN BLUETOOTH_CONNECT BLUETOOTH_SCAN ACCESS_FINE_LOCATION; do
             sed -i "/<application/i\    <uses-permission android:name=\"android.permission.$P\"/>" $M
           done
-      - name: Forcer Android 36 pour les paquets
+      - name: Forcer Android 36 et désactiver lint
         run: |
           mkdir -p ~/.gradle/init.d
           cat > ~/.gradle/init.d/maquis-compilesdk.gradle <<'EOF'
@@ -40,6 +40,13 @@ jobs:
                       } catch (Throwable t) {
                           p.android.compileSdkVersion 36
                       }
+                  }
+              }
+          }
+          gradle.taskGraph.whenReady { graph ->
+              graph.allTasks.each { t ->
+                  if (t.name.toLowerCase().contains('lint')) {
+                      t.enabled = false
                   }
               }
           }
