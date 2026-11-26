@@ -172,8 +172,19 @@ class BackupService {
       failure = 'Échec de la restauration : $e';
     }
     await db.customStatement('UPDATE app_session SET enabled = 1 WHERE id = 1');
-    if (failure != null) return failure;
+        if (failure != null) return failure;
 
+    final ph = data['photos'];
+    if (ph is Map<String, dynamic>) {
+      final dir = await PhotoService.dir();
+      for (final e in ph.entries) {
+        if (e.key.contains('/') || e.key.contains('..')) continue;
+        try {
+          await File('${dir.path}/${e.key}')
+              .writeAsBytes(base64Decode(e.value as String));
+        } catch (_) {}
+      }
+    }
     await db.customStatement(
         'INSERT INTO audit_entries (establishment_id, user_id, user_name, action, entity, detail) VALUES (?, NULL, ?, ?, ?, ?)',
         [
