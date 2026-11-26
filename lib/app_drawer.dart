@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'providers.dart';
+import 'screens/customers_screen.dart';
 import 'screens/drinks_screen.dart';
 import 'screens/kits_screen.dart';
 import 'screens/losses_screen.dart';
@@ -28,6 +29,11 @@ class AppDrawer extends ConsumerWidget {
               subtitle: Text(owner ? 'Propriétaire' : 'Serveur'),
             ),
             const Divider(),
+            ListTile(
+              leading: const Icon(Icons.credit_score),
+              title: const Text('Crédits clients'),
+              onTap: () => _open(context, const CustomersScreen()),
+            ),
             if (owner) ...[
               ListTile(
                 leading: const Icon(Icons.local_bar),
