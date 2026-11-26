@@ -6,6 +6,7 @@ import '../services/catalog_service.dart';
 import '../services/sales_service.dart';
 import '../services/stock_service.dart';
 import 'customers_screen.dart';
+import 'receipt_actions.dart';
 
 class SaleScreen extends ConsumerStatefulWidget {
   const SaleScreen({super.key});
