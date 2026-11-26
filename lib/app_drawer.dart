@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'database/app_database.dart';
 import 'providers.dart';
 import 'screens/analysis_screen.dart';
 import 'screens/audit_screen.dart';
 import 'screens/backup_screen.dart';
 import 'screens/customers_screen.dart';
 import 'screens/drinks_screen.dart';
+import 'screens/establishment_switcher.dart';
 import 'screens/export_screen.dart';
 import 'screens/kits_screen.dart';
 import 'screens/losses_screen.dart';
@@ -24,6 +26,12 @@ class AppDrawer extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final u = ref.watch(sessionProvider);
     final owner = u?.role == 'owner';
+    final ests = ref.watch(establishmentsProvider).valueOrNull ??
+        const <Establishment>[];
+    var estName = '';
+    for (final e in ests) {
+      if (e.id == u?.establishmentId) estName = e.name;
+    }
     return Drawer(
       child: SafeArea(
         child: Column(
@@ -33,6 +41,19 @@ class AppDrawer extends ConsumerWidget {
               title: Text(u?.name ?? ''),
               subtitle: Text(owner ? 'Propriétaire' : 'Serveur'),
             ),
+            if (owner)
+              ListTile(
+                leading: const Icon(Icons.store),
+                title: Text(estName.isEmpty ? 'Établissement' : estName),
+                subtitle: const Text('Changer ou ajouter'),
+                trailing: const Icon(Icons.swap_horiz),
+                onTap: () => showEstablishmentSwitcher(context, ref),
+              )
+            else if (estName.isNotEmpty)
+              ListTile(
+                leading: const Icon(Icons.store),
+                title: Text(estName),
+              ),
             const Divider(),
             Expanded(
               child: ListView(
