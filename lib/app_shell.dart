@@ -6,6 +6,7 @@ import 'screens/caisse_page.dart';
 import 'screens/drink_form.dart';
 import 'screens/expense_form.dart';
 import 'screens/inventory_screen.dart';
+import 'screens/journal_page.dart';
 import 'screens/sale_screen.dart';
 import 'screens/sales_page.dart';
 import 'screens/stock_screen.dart';
@@ -34,7 +35,7 @@ class _AppShellState extends State<AppShell> {
           HomePage(),
           CaissePage(),
           SalesPage(),
-          _Soon('Journal'),
+          JournalPage(),
           _Soon('Guide'),
         ],
       ),
