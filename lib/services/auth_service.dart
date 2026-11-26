@@ -126,7 +126,7 @@ class AuthService {
     if (!RegExp(r'^\d{4,6}$').hasMatch(pin)) {
       return 'Le PIN doit avoir 4 à 6 chiffres.';
     }
-    final all = await users(establishmentId);
+    final all = await db.select(db.users).get();
     if (all.any((u) => _check(pin, u.pinHash))) {
       return 'Ce PIN est déjà utilisé.';
     }
