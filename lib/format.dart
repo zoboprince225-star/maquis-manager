@@ -7,3 +7,8 @@ String fcfa(int n) {
   }
   return '${n < 0 ? '-' : ''}$b FCFA';
 }
+
+String _two(int n) => n.toString().padLeft(2, '0');
+
+String dateFr(DateTime d) =>
+    '${_two(d.day)}/${_two(d.month)}/${d.year} ${_two(d.hour)}:${_two(d.minute)}';
