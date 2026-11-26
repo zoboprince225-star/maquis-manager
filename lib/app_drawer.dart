@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'providers.dart';
+import 'screens/analysis_screen.dart';
 import 'screens/customers_screen.dart';
 import 'screens/drinks_screen.dart';
 import 'screens/kits_screen.dart';
@@ -41,6 +42,11 @@ class AppDrawer extends ConsumerWidget {
               onTap: () => _open(context, const PrinterScreen()),
             ),
             if (owner) ...[
+              ListTile(
+                leading: const Icon(Icons.insights),
+                title: const Text('Bénéfices et bilans'),
+                onTap: () => _open(context, const AnalysisScreen()),
+              ),
               ListTile(
                 leading: const Icon(Icons.local_bar),
                 title: const Text('Catalogue boissons'),
