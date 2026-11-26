@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'database/app_database.dart';
+import 'services/audit_service.dart';
 import 'services/auth_service.dart';
 import 'services/catalog_service.dart';
 import 'services/sales_service.dart';
@@ -22,6 +23,9 @@ final stockServiceProvider =
 
 final salesServiceProvider =
     Provider<SalesService>((ref) => SalesService(ref.watch(dbProvider)));
+
+final auditServiceProvider =
+    Provider<AuditService>((ref) => AuditService(ref.watch(dbProvider)));
 
 /// Utilisateur connecté (null = personne)
 final sessionProvider = StateProvider<User?>((ref) => null);
