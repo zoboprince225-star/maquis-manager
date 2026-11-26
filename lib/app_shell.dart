@@ -5,6 +5,7 @@ import 'providers.dart';
 import 'screens/caisse_page.dart';
 import 'screens/drink_form.dart';
 import 'screens/expense_form.dart';
+import 'screens/guide_page.dart';
 import 'screens/inventory_screen.dart';
 import 'screens/journal_page.dart';
 import 'screens/sale_screen.dart';
@@ -36,7 +37,7 @@ class _AppShellState extends State<AppShell> {
           CaissePage(),
           SalesPage(),
           JournalPage(),
-          _Soon('Guide'),
+          GuidePage(),
         ],
       ),
       bottomNavigationBar: NavigationBar(
