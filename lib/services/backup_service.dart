@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import '../database/app_database.dart';
+import 'audit_service.dart';
 
 class BackupService {
   BackupService(this.db);
@@ -36,6 +37,9 @@ class BackupService {
       'creditPayments': [
         for (final r in await db.select(db.creditPayments).get()) r.toJson()
       ],
+      'auditEntries': [
+        for (final r in await db.select(db.auditEntries).get()) r.toJson()
+      ],
     };
     final data = {
       'app': 'maquis-manager',
@@ -43,7 +47,10 @@ class BackupService {
       'createdAt': DateTime.now().toIso8601String(),
       'tables': tables,
     };
-    return utf8.encode(jsonEncode(data));
+    final bytes = utf8.encode(jsonEncode(data));
+    await AuditService(db)
+        .logCurrent('Sauvegarde', 'Sauvegarde', 'Sauvegarde créée et partagée');
+    return bytes;
   }
 
   /// Retourne null si tout va bien, sinon un message d'erreur.
@@ -71,22 +78,56 @@ class BackupService {
       return [for (final e in l) f(e as Map<String, dynamic>)];
     }
 
+    final List<Establishment> est;
+    final List<User> users;
+    final List<Drink> drinks;
+    final List<Kit> kits;
+    final List<KitItem> kitItems;
+    final List<StockMovement> moves;
+    final List<WorkDay> days;
+    final List<Sale> sales;
+    final List<SaleItem> saleItems;
+    final List<Expense> expenses;
+    final List<Customer> customers;
+    final List<CreditPayment> payments;
+    final List<AuditEntry> audit;
     try {
-      final est = rows('establishments', Establishment.fromJson);
-      final users = rows('users', User.fromJson);
-      final drinks = rows('drinks', Drink.fromJson);
-      final kits = rows('kits', Kit.fromJson);
-      final kitItems = rows('kitItems', KitItem.fromJson);
-      final moves = rows('stockMovements', StockMovement.fromJson);
-      final days = rows('workDays', WorkDay.fromJson);
-      final sales = rows('sales', Sale.fromJson);
-      final saleItems = rows('saleItems', SaleItem.fromJson);
-      final expenses = rows('expenses', Expense.fromJson);
-      final customers = rows('customers', Customer.fromJson);
-      final payments = rows('creditPayments', CreditPayment.fromJson);
-      if (users.isEmpty || est.isEmpty) {
-        return 'La sauvegarde ne contient aucun compte utilisateur.';
+      est = rows('establishments', Establishment.fromJson);
+      users = rows('users', User.fromJson);
+      drinks = rows('drinks', Drink.fromJson);
+      kits = rows('kits', Kit.fromJson);
+      kitItems = rows('kitItems', KitItem.fromJson);
+      moves = rows('stockMovements', StockMovement.fromJson);
+      days = rows('workDays', WorkDay.fromJson);
+      sales = rows('sales', Sale.fromJson);
+      saleItems = rows('saleItems', SaleItem.fromJson);
+      expenses = rows('expenses', Expense.fromJson);
+      customers = rows('customers', Customer.fromJson);
+      payments = rows('creditPayments', CreditPayment.fromJson);
+      audit = rows('auditEntries', AuditEntry.fromJson);
+    } catch (e) {
+      return 'Sauvegarde illisible : $e';
+    }
+    if (users.isEmpty || est.isEmpty) {
+      return 'La sauvegarde ne contient aucun compte utilisateur.';
+    }
+
+    // Qui lance la restauration (pour le journal)
+    String? who;
+    try {
+      final s = await db.select(db.appSession).getSingleOrNull();
+      final uid = s?.userId;
+      if (uid != null) {
+        final u = await (db.select(db.users)..where((x) => x.id.equals(uid)))
+            .getSingleOrNull();
+        who = u?.name;
       }
+    } catch (_) {}
+
+    // On coupe le journal automatique pendant le remplacement des données
+    await db.customStatement('UPDATE app_session SET enabled = 0 WHERE id = 1');
+    String? failure;
+    try {
       await db.transaction(() async {
         await db.delete(db.establishments).go();
         await db.delete(db.users).go();
@@ -100,6 +141,7 @@ class BackupService {
         await db.delete(db.expenses).go();
         await db.delete(db.customers).go();
         await db.delete(db.creditPayments).go();
+        await db.delete(db.auditEntries).go();
         await db.batch((b) {
           b.insertAll(db.establishments, est);
           b.insertAll(db.users, users);
@@ -113,11 +155,24 @@ class BackupService {
           b.insertAll(db.expenses, expenses);
           b.insertAll(db.customers, customers);
           b.insertAll(db.creditPayments, payments);
+          b.insertAll(db.auditEntries, audit);
         });
       });
     } catch (e) {
-      return 'Échec de la restauration : $e';
+      failure = 'Échec de la restauration : $e';
     }
+    await db.customStatement('UPDATE app_session SET enabled = 1 WHERE id = 1');
+    if (failure != null) return failure;
+
+    await db.customStatement(
+        'INSERT INTO audit_entries (establishment_id, user_id, user_name, action, entity, detail) VALUES (?, NULL, ?, ?, ?, ?)',
+        [
+          est.first.id,
+          who,
+          'Restauration',
+          'Sauvegarde',
+          'Toutes les données ont été remplacées par une sauvegarde'
+        ]);
     return null;
   }
 }
