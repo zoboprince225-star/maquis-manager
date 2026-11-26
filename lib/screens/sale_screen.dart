@@ -82,12 +82,12 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
       setState(() => _error = err);
       return;
     }
-    ref.read(dataTickProvider.notifier).state++;
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Vente enregistrée : ${fcfa(total)}')));
-      Navigator.pop(context, true);
-    }
+        ref.read(dataTickProvider.notifier).state++;
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Vente enregistrée : ${fcfa(total)}')));
+    await offerReceipt(context, ref);
+    if (mounted) Navigator.pop(context, true);
   }
 
   Widget _stepper(int qty, VoidCallback minus, VoidCallback? plus) {
