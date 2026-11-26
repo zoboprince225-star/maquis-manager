@@ -1,3 +1,4 @@
+import '../widgets/drink_photo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers.dart';
@@ -95,6 +96,7 @@ class _StockScreenState extends ConsumerState<StockScreen> {
                         itemBuilder: (context, i) {
                           final r = list[i];
                           return ListTile(
+                            leading: DrinkPhoto(name: r.drink.photoPath), 
                             title: Text(r.drink.name),
                             subtitle:
                                 Text('Seuil d’alerte : ${r.drink.alertThreshold}'),
