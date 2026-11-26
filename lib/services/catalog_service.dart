@@ -43,6 +43,7 @@ class CatalogService {
     required int sale,
     required int threshold,
     int initialStock = 0,
+    String? photo,
   }) async {
     final n = name.trim();
     if (n.isEmpty) return 'Saisis un nom.';
@@ -63,6 +64,7 @@ class CatalogService {
             purchasePrice: Value(purchase),
             salePrice: Value(sale),
             alertThreshold: Value(threshold),
+            photoPath: Value(photo),
           ));
       if (initialStock > 0) {
         await db.into(db.stockMovements).insert(StockMovementsCompanion.insert(
@@ -82,6 +84,7 @@ class CatalogService {
         purchasePrice: Value(purchase),
         salePrice: Value(sale),
         alertThreshold: Value(threshold),
+        photoPath: Value(photo),
       ));
     }
     return null;
