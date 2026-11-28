@@ -29,23 +29,64 @@ String _ascii(String s) {
 
 String _n(int v) => fcfa(v).replaceAll(' FCFA', '');
 
+/// Une ligne du reçu telle qu'elle sera imprimée (sert à l'aperçu)
+class PreviewLine {
+  PreviewLine(this.text, this.align, this.bold, this.big, {this.isCut = false});
+  final String text;
+  final int align; // 0 gauche, 1 centre, 2 droite
+  final bool bold;
+  final bool big;
+  final bool isCut;
+}
+
 class ReceiptBuilder {
   ReceiptBuilder(this.width);
   final int width; // 32 (58 mm) ou 48 (80 mm)
   final List<int> _b = [];
+  final List<PreviewLine> preview = [];
+  int _align = 0;
+  bool _bold = false;
+  bool _big = false;
 
   List<int> get bytes => _b;
 
-  void init() => _b.addAll([0x1B, 0x40]);
-  void align(int n) => _b.addAll([0x1B, 0x61, n]); // 0 gauche, 1 centre, 2 droite
-  void bold(bool on) => _b.addAll([0x1B, 0x45, on ? 1 : 0]);
-  void big(bool on) => _b.addAll([0x1D, 0x21, on ? 0x11 : 0x00]);
-  void feed(int n) => _b.addAll([0x1B, 0x64, n]);
-  void cut() => _b.addAll([0x1D, 0x56, 0x42, 0x00]);
+  void init() {
+    _align = 0;
+    _bold = false;
+    _big = false;
+    _b.addAll([0x1B, 0x40]);
+  }
+
+  void align(int n) {
+    _align = n;
+    _b.addAll([0x1B, 0x61, n]);
+  }
+
+  void bold(bool on) {
+    _bold = on;
+    _b.addAll([0x1B, 0x45, on ? 1 : 0]);
+  }
+
+  void big(bool on) {
+    _big = on;
+    _b.addAll([0x1D, 0x21, on ? 0x11 : 0x00]);
+  }
+
+  void feed(int n) {
+    _b.addAll([0x1B, 0x64, n]);
+    preview.add(PreviewLine('', 0, false, false));
+  }
+
+  void cut() {
+    _b.addAll([0x1D, 0x56, 0x42, 0x00]);
+    preview.add(PreviewLine('', 0, false, false, isCut: true));
+  }
 
   void line(String s) {
-    _b.addAll(_ascii(s).codeUnits);
+    final a = _ascii(s);
+    _b.addAll(a.codeUnits);
     _b.add(0x0A);
+    preview.add(PreviewLine(a, _align, _bold, _big));
   }
 
   void sep() => line('-' * width);
@@ -65,7 +106,7 @@ class ReceiptBuilder {
   }
 }
 
-List<int> buildTestReceipt(int width) {
+ReceiptBuilder testReceipt(int width) {
   final r = ReceiptBuilder(width)..init();
   r.align(1);
   r.bold(true);
@@ -81,10 +122,12 @@ List<int> buildTestReceipt(int width) {
   r.line('Impression reussie !');
   r.feed(4);
   r.cut();
-  return r.bytes;
+  return r;
 }
 
-List<int> buildSaleReceipt(ReceiptData d, int width) {
+List<int> buildTestReceipt(int width) => testReceipt(width).bytes;
+
+ReceiptBuilder saleReceipt(ReceiptData d, int width) {
   final r = ReceiptBuilder(width)..init();
   r.align(1);
   r.bold(true);
@@ -114,5 +157,8 @@ List<int> buildSaleReceipt(ReceiptData d, int width) {
   r.line('Merci de votre visite !');
   r.feed(4);
   r.cut();
-  return r.bytes;
+  return r;
 }
+
+List<int> buildSaleReceipt(ReceiptData d, int width) =>
+    saleReceipt(d, width).bytes;
