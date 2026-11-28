@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../database/app_database.dart';
 import '../format.dart';
 import '../providers.dart';
+import '../services/sales_admin_service.dart';
 import '../services/sales_service.dart';
 import '../widgets/day_card.dart';
 import 'expense_form.dart';
@@ -43,6 +44,31 @@ class _CaissePageState extends ConsumerState<CaissePage> {
     _reload();
   }
 
+  Future<void> _delete(Expense e) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Supprimer cette dépense ?'),
+        content: Text('${e.label}\n${fcfa(e.amount)}'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Annuler')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Supprimer')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final err = await SalesAdminService(ref.read(dbProvider))
+        .deleteExpense(e.id, ref.read(sessionProvider)!.id);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(err ?? 'Dépense supprimée')));
+    if (err == null) ref.read(dataTickProvider.notifier).state++;
+  }
+
   Widget _row(String label, int value, {Color? color, bool bold = false}) {
     final style = TextStyle(
         color: color, fontWeight: bold ? FontWeight.bold : FontWeight.normal);
@@ -61,6 +87,7 @@ class _CaissePageState extends ConsumerState<CaissePage> {
   @override
   Widget build(BuildContext context) {
     ref.listen<int>(dataTickProvider, (_, __) => _reload());
+    final owner = ref.watch(sessionProvider)?.role == 'owner';
     final s = _sum;
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -114,8 +141,24 @@ class _CaissePageState extends ConsumerState<CaissePage> {
               title: Text(e.label),
               subtitle: Text(
                   '${hourFr(e.createdAt)} · ${e.fromCash ? 'Caisse' : 'Hors caisse'}'),
-              trailing: Text(fcfa(e.amount),
-                  style: const TextStyle(color: Colors.redAccent)),
+              trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                Text(fcfa(e.amount),
+                    style: const TextStyle(color: Colors.redAccent)),
+                if (owner)
+                  PopupMenuButton<String>(
+                    onSelected: (v) {
+                      if (v == 'edit') {
+                        showExpenseForm(context, expense: e);
+                      } else {
+                        _delete(e);
+                      }
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(value: 'edit', child: Text('Modifier')),
+                      PopupMenuItem(value: 'delete', child: Text('Supprimer')),
+                    ],
+                  ),
+              ]),
             ),
         ],
       ],
