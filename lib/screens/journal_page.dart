@@ -97,7 +97,19 @@ class _JournalPageState extends ConsumerState<JournalPage> {
   }
 
   
-
+  Future<void> _print(ClosedDay c) async {
+    final name =
+        await ReportService(ref.read(dbProvider)).establishmentName(_eid);
+    final width = await PrinterService.paperChars();
+    if (!mounted) return;
+    await showReceiptPreview(
+      context,
+      title: 'Rapport de clôture',
+      builder: dayReportReceipt(name, c, width),
+      successMessage: 'Rapport imprimé',
+    );
+  }
+  
   Widget _row(String label, String value,
       {Color? color, bool bold = false, double indent = 0}) {
     final style = TextStyle(
