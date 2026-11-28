@@ -1,3 +1,4 @@
+import 'receipt_preview.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../database/app_database.dart';
@@ -95,13 +96,7 @@ class _JournalPageState extends ConsumerState<JournalPage> {
     }
   }
 
-  Future<void> _print(ClosedDay c) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final name = await ReportService(ref.read(dbProvider)).establishmentName(_eid);
-    final width = await PrinterService.paperChars();
-    final err = await PrinterService.printBytes(buildDayReport(name, c, width));
-    messenger.showSnackBar(SnackBar(content: Text(err ?? 'Rapport imprimé')));
-  }
+  
 
   Widget _row(String label, String value,
       {Color? color, bool bold = false, double indent = 0}) {
