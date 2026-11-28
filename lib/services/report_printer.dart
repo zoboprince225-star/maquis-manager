@@ -2,7 +2,7 @@ import '../format.dart';
 import 'receipt_builder.dart';
 import 'report_service.dart';
 
-List<int> buildDayReport(String establishment, ClosedDay c, int width) {
+ReceiptBuilder dayReportReceipt(String establishment, ClosedDay c, int width) {
   final s = c.summary;
   final r = ReceiptBuilder(width)..init();
   r.align(1);
@@ -36,5 +36,8 @@ List<int> buildDayReport(String establishment, ClosedDay c, int width) {
   r.lr('Total des ventes', fcfa(s.totalSales));
   r.feed(4);
   r.cut();
-  return r.bytes;
+  return r;
 }
+
+List<int> buildDayReport(String establishment, ClosedDay c, int width) =>
+    dayReportReceipt(establishment, c, width).bytes;
