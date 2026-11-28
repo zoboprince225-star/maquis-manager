@@ -109,12 +109,12 @@ jobs:
       - name: Compiler l'APK signé
         id: signed
         continue-on-error: true
-        run: flutter build apk --release --build-name=1.0.0 --build-number=${{ github.run_number }}
+        run: flutter build apk --release --build-name=1.0.0 --build-number=${{ github.run_number }} --dart-define=ACTIVATION_CODE=${{ secrets.ACTIVATION_CODE }}
       - name: Compiler sans clé stable (secours)
         if: steps.signed.outcome == 'failure'
         run: |
           rm -f ~/.gradle/init.d/maquis-signing.gradle
-          flutter build apk --release --build-name=1.0.0 --build-number=${{ github.run_number }}
+          flutter build apk --release --build-name=1.0.0 --build-number=${{ github.run_number }} --dart-define=ACTIVATION_CODE=${{ secrets.ACTIVATION_CODE }}
       - uses: actions/upload-artifact@v4
         with:
           name: maquis-apk
