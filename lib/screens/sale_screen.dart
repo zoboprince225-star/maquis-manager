@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../database/app_database.dart';
 import '../format.dart';
 import '../providers.dart';
 import '../services/catalog_service.dart';
+import '../services/sales_admin_service.dart';
 import '../services/sales_service.dart';
 import '../services/stock_service.dart';
 import '../widgets/drink_photo.dart'; // PHOTOS
@@ -11,7 +13,11 @@ import 'customers_screen.dart';
 import 'receipt_actions.dart';
 
 class SaleScreen extends ConsumerStatefulWidget {
-  const SaleScreen({super.key});
+  const SaleScreen({super.key, this.editSaleId});
+
+  /// Si renseigné : modification d'une vente existante (propriétaire seul)
+  final int? editSaleId;
+
   @override
   ConsumerState<SaleScreen> createState() => _SaleScreenState();
 }
@@ -23,11 +29,19 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
   bool _loaded = false;
   final Map<int, int> _dq = {};
   final Map<int, int> _kq = {};
+  Map<int, int> _restore = {};
+  Map<int, int> _origD = {};
+  Map<int, int> _origK = {};
+  bool _blocked = false;
   String _mode = 'cash';
   int? _customerId;
   String? _error;
 
+  bool get _editing => widget.editSaleId != null;
   int get _eid => ref.read(sessionProvider)!.establishmentId;
+
+  int _pd(Drink d) => _origD[d.id] ?? d.salePrice;
+  int _pk(Kit k) => _origK[k.id] ?? k.salePrice;
 
   Future<void> _loadAll() async {
     final st = await ref.read(stockServiceProvider).rows(_eid);
@@ -42,19 +56,55 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
     });
   }
 
+  Future<void> _prefill() async {
+    final e = await SalesAdminService(ref.read(dbProvider))
+        .load(widget.editSaleId!);
+    if (!mounted) return;
+    if (e == null) {
+      setState(() {
+        _error = 'Vente introuvable.';
+        _blocked = true;
+      });
+      return;
+    }
+    final missing =
+        e.drinkQty.keys.any((id) => !_stock.any((r) => r.drink.id == id)) ||
+            e.kitQty.keys.any((id) => !_kits.any((k) => k.kit.id == id));
+    setState(() {
+      _dq
+        ..clear()
+        ..addAll(e.drinkQty);
+      _kq
+        ..clear()
+        ..addAll(e.kitQty);
+      _origD = e.drinkPrice;
+      _origK = e.kitPrice;
+      _restore = e.consumed;
+      _mode = e.sale.paymentMode;
+      _customerId = e.sale.customerId;
+      if (missing) {
+        _blocked = true;
+        _error =
+            'Cette vente contient un article supprimé du catalogue : elle ne peut pas être modifiée. Tu peux la supprimer.';
+      }
+    });
+  }
+
   @override
   void initState() {
     super.initState();
-    _loadAll();
+    _loadAll().then((_) {
+      if (_editing) _prefill();
+    });
   }
 
   int get _total {
     var t = 0;
     for (final r in _stock) {
-      t += (_dq[r.drink.id] ?? 0) * r.drink.salePrice;
+      t += (_dq[r.drink.id] ?? 0) * _pd(r.drink);
     }
     for (final k in _kits) {
-      t += (_kq[k.kit.id] ?? 0) * k.kit.salePrice;
+      t += (_kq[k.kit.id] ?? 0) * _pk(k.kit);
     }
     return t;
   }
@@ -66,26 +116,43 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
           SaleLine(
               drinkId: r.drink.id,
               qty: _dq[r.drink.id]!,
-              price: r.drink.salePrice),
+              price: _pd(r.drink)),
       for (final k in _kits)
         if ((_kq[k.kit.id] ?? 0) > 0)
-          SaleLine(
-              kitId: k.kit.id, qty: _kq[k.kit.id]!, price: k.kit.salePrice),
+          SaleLine(kitId: k.kit.id, qty: _kq[k.kit.id]!, price: _pk(k.kit)),
     ];
     final total = _total;
-    final err = await ref.read(salesServiceProvider).recordSale(
-          eid: _eid,
-          userId: ref.read(sessionProvider)!.id,
-          lines: lines,
-          mode: _mode,
-          customerId: _mode == 'credit' ? _customerId : null,
-        );
+    final user = ref.read(sessionProvider)!;
+    final String? err;
+    if (_editing) {
+      err = await SalesAdminService(ref.read(dbProvider)).editSale(
+        saleId: widget.editSaleId!,
+        userId: user.id,
+        lines: lines,
+        mode: _mode,
+        customerId: _mode == 'credit' ? _customerId : null,
+      );
+    } else {
+      err = await ref.read(salesServiceProvider).recordSale(
+            eid: _eid,
+            userId: user.id,
+            lines: lines,
+            mode: _mode,
+            customerId: _mode == 'credit' ? _customerId : null,
+          );
+    }
     if (err != null) {
       setState(() => _error = err);
       return;
     }
     ref.read(dataTickProvider.notifier).state++;
     if (!mounted) return;
+    if (_editing) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Vente modifiée : ${fcfa(total)}')));
+      Navigator.pop(context, true);
+      return;
+    }
     ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Vente enregistrée : ${fcfa(total)}')));
     await offerReceipt(context, ref);
@@ -177,8 +244,17 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_editing && ref.watch(sessionProvider)?.role != 'owner') {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Modifier la vente')),
+        body: const Center(child: Text('Réservé au propriétaire.')),
+      );
+    }
     return Scaffold(
-      appBar: AppBar(title: const Text('Nouvelle vente')),
+      appBar: AppBar(
+          title: Text(_editing
+              ? 'Modifier la vente n°${widget.editSaleId}'
+              : 'Nouvelle vente')),
       body: !_loaded
           ? const Center(child: CircularProgressIndicator())
           : (_stock.isEmpty && _kits.isEmpty)
@@ -195,7 +271,7 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
                     for (final k in _kits)
                       ListTile(
                         title: Text(k.kit.name),
-                        subtitle: Text(fcfa(k.kit.salePrice)),
+                        subtitle: Text(fcfa(_pk(k.kit))),
                         trailing: _stepper(
                           qty: _kq[k.kit.id] ?? 0,
                           max: 999,
@@ -212,26 +288,29 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
                         child: Text('Boissons',
                             style: TextStyle(fontWeight: FontWeight.bold))),
                     for (final r in _stock)
-                      ListTile(
-                        leading: DrinkPhoto(name: r.drink.photoPath, size: 44), // PHOTOS
-                        title: Text(r.drink.name),
-                        subtitle: Text(
-                            '${fcfa(r.drink.salePrice)} · stock ${r.stock}',
-                            style: TextStyle(
-                                color: r.empty ? Colors.redAccent : null)),
-                        trailing: _stepper(
-                          qty: _dq[r.drink.id] ?? 0,
-                          max: r.stock,
-                          name: r.drink.name,
-                          minus: () => setState(() =>
-                              _dq[r.drink.id] = (_dq[r.drink.id] ?? 0) - 1),
-                          plus: (_dq[r.drink.id] ?? 0) < r.stock
-                              ? () => setState(() => _dq[r.drink.id] =
-                                  (_dq[r.drink.id] ?? 0) + 1)
-                              : null,
-                          onSet: (q) => _dq[r.drink.id] = q,
-                        ),
-                      ),
+                      Builder(builder: (context) {
+                        final avail = r.stock + (_restore[r.drink.id] ?? 0);
+                        return ListTile(
+                          leading: DrinkPhoto(name: r.drink.photoPath, size: 44), // PHOTOS
+                          title: Text(r.drink.name),
+                          subtitle: Text(
+                              '${fcfa(_pd(r.drink))} · stock $avail',
+                              style: TextStyle(
+                                  color: avail <= 0 ? Colors.redAccent : null)),
+                          trailing: _stepper(
+                            qty: _dq[r.drink.id] ?? 0,
+                            max: avail,
+                            name: r.drink.name,
+                            minus: () => setState(() =>
+                                _dq[r.drink.id] = (_dq[r.drink.id] ?? 0) - 1),
+                            plus: (_dq[r.drink.id] ?? 0) < avail
+                                ? () => setState(() => _dq[r.drink.id] =
+                                    (_dq[r.drink.id] ?? 0) + 1)
+                                : null,
+                            onSet: (q) => _dq[r.drink.id] = q,
+                          ),
+                        );
+                      }),
                   ],
                 ),
       bottomNavigationBar: !_loaded
@@ -292,10 +371,12 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
                               style: const TextStyle(color: Colors.redAccent))),
                     const SizedBox(height: 8),
                     FilledButton(
-                      onPressed: _total > 0 ? _validate : null,
+                      onPressed: (_total > 0 && !_blocked) ? _validate : null,
                       child: Padding(
                           padding: const EdgeInsets.all(12),
-                          child: Text('Valider · ${fcfa(_total)}')),
+                          child: Text(_editing
+                              ? 'Enregistrer les modifications · ${fcfa(_total)}'
+                              : 'Valider · ${fcfa(_total)}')),
                     ),
                   ],
                 ),
