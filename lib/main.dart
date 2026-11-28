@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app_shell.dart';
 import 'database/app_database.dart';
 import 'providers.dart';
+import 'screens/activation_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/setup_screen.dart';
 import 'theme.dart';
@@ -47,6 +48,17 @@ class Gate extends ConsumerWidget {
             next, 'Connexion', 'Session', 'Connexion de ${next.name}');
       }
     });
+
+    // 1) Code d'activation (première utilisation)
+    final act = ref.watch(activatedProvider);
+    if (act.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (act.hasError || act.valueOrNull != true) {
+      return const ActivationScreen();
+    }
+
+    // 2) Connexion habituelle
     final user = ref.watch(sessionProvider);
     if (user != null) {
       // La clé recrée tout l'écran quand on change d'établissement
