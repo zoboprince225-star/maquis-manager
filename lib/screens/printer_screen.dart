@@ -123,7 +123,7 @@ class _PrinterScreenState extends State<PrinterScreen> {
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Proposer l’impression après chaque vente'),
+            title: const Text('Afficher l’aperçu du reçu après chaque vente'),
             value: _ask,
             onChanged: (v) async {
               await PrinterService.setAskAfterSale(v);
